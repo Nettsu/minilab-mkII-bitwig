@@ -7,17 +7,39 @@ host.addDeviceNameBasedDiscoveryPair(["Arturia MINILAB MKII"], ["Arturia MINILAB
 var TRACK_NUM = 8;
 var SEND_NUM = 2;
 
+var MACRO_NAMES = [
+    "Macro 1",
+    "Macro 2",
+    "Macro 3",
+    "Macro 4",
+    "Macro 5",
+    "Macro 6",
+    "Macro 7",
+    "Macro 8"
+];
+
+var MACRO_MAP =
+{
+    "Macro 1":0,
+    "Macro 2":1,
+    "Macro 3":2,
+    "Macro 4":3,
+    "Macro 5":4,
+    "Macro 6":5,
+    "Macro 7":6,
+    "Macro 8":7
+};
+
 var Knobs1 = [112, 74, 71, 76, 77, 93, 73, 75];
 var Knobs2 = [114, 18, 19, 16, 17, 91, 79, 72];
 
 var Knobs1click = 113;
 var Knobs2click = 115;
 
-var modWheel = 1;
-var modWheelMacro = 7;
-
+var modWheel        = 1;
+var modWheelMacro   = 7;
 var volumeKnobSpeed = 1.0;
-var macroKnobSpeed = 2.0;
+var macroKnobSpeed  = 2.0;
 
 function init()
 {
@@ -29,19 +51,27 @@ function init()
     MiniLabPads.assignPolyphonicAftertouchToExpression(0, NoteExpression.TIMBRE_UP, 2);
 
     host.getMidiInPort(0).setMidiCallback(onMidi);
-    //host.getMidiInPort(0).setSysexCallback(onSysex);
+    var prefs = host.getPreferences();
+
+    var modWheelSetting = prefs.getEnumSetting("Modwheel macro", "Config", MACRO_NAMES, "Macro 8");
+    modWheelSetting.addValueObserver(function (value) {
+        modWheelMacro = MACRO_MAP[value];
+    });
+
+    var volumeSpeedSetting = prefs.getNumberSetting("Volume knob speed", "Config", -10, 10, 0.1, "", 1.0);
+    volumeSpeedSetting.addRawValueObserver(function (value) {
+        volumeKnobSpeed = value;
+    });
+
+    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Config", -10, 10, 0.1, "", 2.0);
+    macroSpeedSetting.addRawValueObserver(function(value) {
+        macroKnobSpeed = value;
+    });
 
     // create track bank, groups are added without children
     tracks = host.createMasterTrack(0).createSiblingsTrackBank(TRACK_NUM, SEND_NUM, 0, false, false);
     cTrack = host.createCursorTrack(3, 0);
     cDevice = cTrack.getPrimaryDevice();
-
-    for (var i = 0; i < TRACK_NUM; i++)
-    {
-        tracks.getChannel(i).getVolume().addRawValueObserver(function(value) {
-           // limit value to <= 0 ??
-        })
-    }
 
     setIndications();
 }
