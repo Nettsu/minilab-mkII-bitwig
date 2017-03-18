@@ -1,6 +1,6 @@
 loadAPI(1);
 
-host.defineController("Arturia", "MiniLab MKII", "1.0", "9c891939-9cb5-488d-a447-266f543516f3", "Netsu");
+host.defineController("Arturia", "MiniLab MKII - Netsu", "1.0", "9c891939-9cb5-488d-a447-266f543516f3", "Netsu");
 host.defineMidiPorts(1, 1);
 host.addDeviceNameBasedDiscoveryPair(["Arturia MINILAB MKII"], ["Arturia MINILAB MKII"]);
 
