@@ -53,17 +53,17 @@ function init()
     host.getMidiInPort(0).setMidiCallback(onMidi);
     var prefs = host.getPreferences();
 
-    var modWheelSetting = prefs.getEnumSetting("Modwheel macro", "Config", MACRO_NAMES, "Macro 8");
+    var modWheelSetting = prefs.getEnumSetting("Modwheel macro", "Modwheel", MACRO_NAMES, "Macro 8");
     modWheelSetting.addValueObserver(function (value) {
         modWheelMacro = MACRO_MAP[value];
     });
 
-    var volumeSpeedSetting = prefs.getNumberSetting("Volume knob speed", "Config", -10, 10, 0.1, "", 1.0);
+    var volumeSpeedSetting = prefs.getNumberSetting("Volume knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
     volumeSpeedSetting.addRawValueObserver(function (value) {
         volumeKnobSpeed = value;
     });
 
-    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Config", -10, 10, 0.1, "", 2.0);
+    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Knobs", -10, 10, 0.1, "", 2.0);
     macroSpeedSetting.addRawValueObserver(function(value) {
         macroKnobSpeed = value;
     });
