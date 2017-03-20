@@ -39,7 +39,7 @@ var Knobs2click = 115;
 var modWheel        = 1;
 var modWheelMacro   = 7;
 var volumeKnobSpeed = 1.0;
-var macroKnobSpeed  = 2.0;
+var macroKnobSpeed  = 1.0;
 
 function init()
 {
@@ -63,7 +63,7 @@ function init()
         volumeKnobSpeed = value;
     });
 
-    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Knobs", -10, 10, 0.1, "", 2.0);
+    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
     macroSpeedSetting.addRawValueObserver(function(value) {
         macroKnobSpeed = value;
     });
