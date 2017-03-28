@@ -7,6 +7,11 @@ host.addDeviceNameBasedDiscoveryPair(["Arturia MINILAB MKII"], ["Arturia MINILAB
 var TRACK_NUM = 8;
 var SEND_NUM = 2;
 
+STATUS_PAD_ON = 153;
+STATUS_PAD_OFF = 137;
+STATUS_KNOB = 176;
+FIRST_PAD_MIDI = 36;
+
 var MACRO_NAMES = [
     "Macro 1",
     "Macro 2",
@@ -30,6 +35,38 @@ var MACRO_MAP =
     "Macro 8":7
 };
 
+var COLOR =
+{
+    BLACK   :"00",
+    RED     :"01",
+    BLUE    :"10",
+    GREEN   :"04",
+    CYAN    :"14",
+    PURPLE  :"11",
+    YELLOW  :"05",
+    WHITE   :"7F"
+};
+
+var PAD_COLORS =
+[
+    COLOR.RED,
+    COLOR.YELLOW,
+    COLOR.YELLOW,
+    COLOR.GREEN,
+    COLOR.CYAN,
+    COLOR.CYAN,
+    COLOR.BLUE,
+    COLOR.PURPLE,
+    COLOR.RED,
+    COLOR.YELLOW,
+    COLOR.YELLOW,
+    COLOR.GREEN,
+    COLOR.CYAN,
+    COLOR.CYAN,
+    COLOR.BLUE,
+    COLOR.PURPLE
+];
+
 var Knobs1 = [112, 74, 71, 76, 77, 93, 73, 75];
 var Knobs2 = [114, 18, 19, 16, 17, 91, 79, 72];
 
@@ -40,6 +77,7 @@ var modWheel        = 1;
 var modWheelMacro   = 7;
 var volumeKnobSpeed = 1.0;
 var macroKnobSpeed  = 1.0;
+var rainbowColors   = true;
 
 function init()
 {
@@ -56,6 +94,15 @@ function init()
     var modWheelSetting = prefs.getEnumSetting("Modwheel macro", "Modwheel", MACRO_NAMES, "Macro 8");
     modWheelSetting.addValueObserver(function (value) {
         modWheelMacro = MACRO_MAP[value];
+    });
+
+    var rainbowSetting = prefs.getEnumSetting("Rainbow colors", "Pads", ["ON", "OFF"], "ON");
+    rainbowSetting.addValueObserver(function (value) {
+        rainbowColors = (value == "ON");
+        if (rainbowColors == true)
+        {
+            makeRainbow();
+        }
     });
 
     var volumeSpeedSetting = prefs.getNumberSetting("Volume knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
@@ -76,6 +123,14 @@ function init()
     setIndications();
 }
 
+function makeRainbow()
+{
+    for (var i = 0; i < 16; i++)
+    {
+        setPadColor(i, PAD_COLORS[i]);
+    }
+}
+
 function MidiData(status, data1, data2)
 {
    this.status = status;
@@ -88,10 +143,23 @@ function onMidi(status, data1, data2)
     // Instantiate the MidiData Object for convenience:
     var midi = new MidiData(status, data1, data2);
 
-    //println(midi.status + ":" + midi.data1 + ":" + midi.data2);
+    println(midi.status + ":" + midi.data1 + ":" + midi.data2);
+
+    if (rainbowColors == true)
+    {
+        var padNum = midi.data1 - FIRST_PAD_MIDI;
+        if (midi.status == STATUS_PAD_ON)
+        {
+            setPadColor(padNum, COLOR.WHITE);
+        }
+        if (midi.status == STATUS_PAD_OFF)
+        {
+            setPadColor(padNum, PAD_COLORS[padNum]);
+        }
+    }
 
     //status 176 is for knobs I think
-    if (midi.status == 176)
+    if (midi.status == STATUS_KNOB)
     {
         for (var i = 0; i < 8; i++)
         {
@@ -153,6 +221,12 @@ function knobFunc(Row, index, midi)
         var inc = (midi.data2 - 64) * macroKnobSpeed;
         cDevice.getMacro(index).getAmount().inc(inc, 128);
     }
+}
+
+function setPadColor(pad, color)
+{
+    var padHex = (112 + pad).toString(16);
+    sendSysex("F0 00 20 6B 7F 42 02 00 10 " + padHex + " " + color + " F7");
 }
 
 function setIndications()
