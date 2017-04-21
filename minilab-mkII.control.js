@@ -67,6 +67,12 @@ var PAD_COLORS =
     COLOR.PURPLE
 ];
 
+var BOTTOM_FUNC =
+{
+    CURRENT:0,
+    MASTER:1
+};
+
 var Knobs1 = [112, 74, 71, 76, 77, 93, 73, 75];
 var Knobs2 = [114, 18, 19, 16, 17, 91, 79, 72];
 
@@ -78,6 +84,10 @@ var modWheelMacro   = 7;
 var volumeKnobSpeed = 1.0;
 var macroKnobSpeed  = 1.0;
 var rainbowColors   = true;
+
+var bottomRow = BOTTOM_FUNC.CURRENT;
+
+var internalBPM;
 
 function init()
 {
@@ -105,6 +115,18 @@ function init()
         }
     });
 
+    var bottomRowSetting = prefs.getEnumSetting("Bottom row", "Knobs", ["Current track", "Master + BPM"], "Current track");
+    bottomRowSetting.addValueObserver(function (value) {
+        if (value == "Current track")
+        {
+            bottomRow = BOTTOM_FUNC.CURRENT;
+        }
+        else
+        {
+            bottomRow = BOTTOM_FUNC.MASTER;
+        }
+    });
+
     var volumeSpeedSetting = prefs.getNumberSetting("Volume knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
     volumeSpeedSetting.addRawValueObserver(function (value) {
         volumeKnobSpeed = value;
@@ -119,6 +141,8 @@ function init()
     tracks = host.createMasterTrack(0).createSiblingsTrackBank(TRACK_NUM, SEND_NUM, 0, false, false);
     cTrack = host.createCursorTrack(3, 0);
     cDevice = cTrack.getPrimaryDevice();
+    mDevice = host.createMasterTrack(0).getPrimaryDevice();
+    transport = host.createTransport();
 
     setIndications();
 }
@@ -143,7 +167,7 @@ function onMidi(status, data1, data2)
     // Instantiate the MidiData Object for convenience:
     var midi = new MidiData(status, data1, data2);
 
-    println(midi.status + ":" + midi.data1 + ":" + midi.data2);
+    //println(midi.status + ":" + midi.data1 + ":" + midi.data2);
 
     if (rainbowColors == true)
     {
@@ -200,7 +224,14 @@ function resetMacros()
 {
     for (var i = 0; i < 8; i++)
     {
-        cDevice.getMacro(i).getAmount().reset();
+        if (bottomRow == BOTTOM_FUNC.CURRENT)
+        {
+            cDevice.getMacro(i).getAmount().reset();
+        }
+        else
+        {
+            mDevice.getMacro(i).getAmount().reset();
+        }
     }
 }
 
@@ -218,8 +249,26 @@ function knobFunc(Row, index, midi)
     }
     else
     {
-        var inc = (midi.data2 - 64) * macroKnobSpeed;
-        cDevice.getMacro(index).getAmount().inc(inc, 128);
+        if (bottomRow == BOTTOM_FUNC.CURRENT)
+        {
+            // 8 macros of selected track
+            var inc = (midi.data2 - 64) * macroKnobSpeed;
+            cDevice.getMacro(index).getAmount().inc(inc, 128);
+        }
+        else if (index < 7)
+        {
+            // 7 macros of master track
+            println("master knobs");
+            var inc = (midi.data2 - 64) * macroKnobSpeed;
+            mDevice.getMacro(index).getAmount().inc(inc, 128);
+        }
+        else if (index == 7)
+        {
+            // BPM control
+            var sign = getSign(midi.data2 - 64);
+            transport.getTempo().incRaw(0.5 * sign);
+            //transport.increaseTempo(inc, 256);
+        }
     }
 }
 
@@ -236,6 +285,11 @@ function setIndications()
         tracks.getTrack(i).getVolume().setIndication(true);
         cDevice.getMacro(i).getAmount().setIndication(true);
     }
+}
+
+function getSign(x)
+{
+    return typeof x === 'number' ? x ? x < 0 ? -1 : 1 : x === x ? 0 : NaN : NaN;
 }
 
 function exit()
