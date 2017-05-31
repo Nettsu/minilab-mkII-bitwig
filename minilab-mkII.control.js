@@ -4,9 +4,6 @@ host.defineController("Arturia", "MiniLab MKII - Netsu", "1.0", "9c891939-9cb5-4
 host.defineMidiPorts(1, 1);
 host.addDeviceNameBasedDiscoveryPair(["Arturia MINILAB MKII"], ["Arturia MINILAB MKII"]);
 
-var TRACK_NUM = 8;
-var SEND_NUM = 2;
-
 STATUS_PAD_ON = 153;
 STATUS_PAD_OFF = 137;
 STATUS_KNOB = 176;
@@ -73,21 +70,16 @@ var BOTTOM_FUNC =
     MASTER:1
 };
 
-var Knobs1 = [112, 74, 71, 76, 77, 93, 73, 75];
-var Knobs2 = [114, 18, 19, 16, 17, 91, 79, 72];
+var KnobsLeft = [112, 74, 71, 76, 114, 18, 19, 16];
+var KnobsRight = [77, 93, 73, 75, 17, 91, 79, 72];
 
-var Knobs1click = 113;
-var Knobs2click = 115;
+var Knob1click = 113;
+var Knob9click = 115;
 
 var modWheel        = 1;
 var modWheelMacro   = 7;
-var volumeKnobSpeed = 1.0;
 var macroKnobSpeed  = 1.0;
 var rainbowColors   = true;
-
-var bottomRow = BOTTOM_FUNC.CURRENT;
-
-var internalBPM;
 
 function init()
 {
@@ -99,50 +91,38 @@ function init()
     MiniLabPads.assignPolyphonicAftertouchToExpression(0, NoteExpression.TIMBRE_UP, 2);
 
     host.getMidiInPort(0).setMidiCallback(onMidi);
-    var prefs = host.getPreferences();
+
+    cTrack = host.createCursorTrack(3, 0);
+    uControl = host.createUserControls(8);
+    cDevice = cTrack.getPrimaryDevice();
+    prefs = host.getPreferences();
+
+    for (var i = 0; i < 8; i++)
+    {
+        uControl.getControl(i).setLabel("CC " + KnobsRight[i])
+    }
 
     var modWheelSetting = prefs.getEnumSetting("Modwheel macro", "Modwheel", MACRO_NAMES, "Macro 8");
-    modWheelSetting.addValueObserver(function (value) {
+    modWheelSetting.addValueObserver(function (value)
+    {
         modWheelMacro = MACRO_MAP[value];
     });
 
+    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
+    macroSpeedSetting.addRawValueObserver(function(value)
+    {
+        macroKnobSpeed = value;
+    });
+
     var rainbowSetting = prefs.getEnumSetting("Rainbow colors", "Pads", ["ON", "OFF"], "ON");
-    rainbowSetting.addValueObserver(function (value) {
+    rainbowSetting.addValueObserver(function (value)
+    {
         rainbowColors = (value == "ON");
         if (rainbowColors == true)
         {
             makeRainbow();
         }
     });
-
-    var bottomRowSetting = prefs.getEnumSetting("Bottom row", "Knobs", ["Current track", "Master + BPM"], "Current track");
-    bottomRowSetting.addValueObserver(function (value) {
-        if (value == "Current track")
-        {
-            bottomRow = BOTTOM_FUNC.CURRENT;
-        }
-        else
-        {
-            bottomRow = BOTTOM_FUNC.MASTER;
-        }
-    });
-
-    var volumeSpeedSetting = prefs.getNumberSetting("Volume knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
-    volumeSpeedSetting.addRawValueObserver(function (value) {
-        volumeKnobSpeed = value;
-    });
-
-    var macroSpeedSetting = prefs.getNumberSetting("Macro knob speed", "Knobs", -10, 10, 0.1, "", 1.0);
-    macroSpeedSetting.addRawValueObserver(function(value) {
-        macroKnobSpeed = value;
-    });
-
-    // create track bank, groups are added without children
-    tracks = host.createMasterTrack(0).createSiblingsTrackBank(TRACK_NUM, SEND_NUM, 0, false, false);
-    cTrack = host.createCursorTrack(3, 0);
-    cDevice = cTrack.getPrimaryDevice();
-    mDevice = host.createMasterTrack(0).getPrimaryDevice();
-    transport = host.createTransport();
 
     setIndications();
 }
@@ -182,26 +162,23 @@ function onMidi(status, data1, data2)
         }
     }
 
-    //status 176 is for knobs I think
     if (midi.status == STATUS_KNOB)
     {
+        var inc = (midi.data2 - 64) * macroKnobSpeed;
+
         for (var i = 0; i < 8; i++)
         {
-           if (midi.data1 === Knobs1[i])
+           if (midi.data1 === KnobsLeft[i])
            {
-              knobFunc(1, i, midi);
+               cDevice.getMacro(i).getAmount().inc(inc, 128);
            }
-           else if (midi.data1 === Knobs2[i])
+           else if (midi.data1 === KnobsRight[i])
            {
-              knobFunc(2, i, midi);
+              uControl.getControl(i).inc(inc, 128);
            }
         }
 
-        if (midi.data1 == Knobs1click)
-        {
-            resetVolumes();
-        }
-        else if (midi.data1 == Knobs2click)
+        if (midi.data1 == Knob1click)
         {
             resetMacros();
         }
@@ -212,64 +189,17 @@ function onMidi(status, data1, data2)
     }
 }
 
-function resetVolumes()
-{
-    for (var i = 0; i < TRACK_NUM; i++)
-    {
-        tracks.getTrack(i).getVolume().reset();
-    }
-}
-
 function resetMacros()
 {
     for (var i = 0; i < 8; i++)
     {
-        if (bottomRow == BOTTOM_FUNC.CURRENT)
-        {
-            cDevice.getMacro(i).getAmount().reset();
-        }
-        else
-        {
-            mDevice.getMacro(i).getAmount().reset();
-        }
+        cDevice.getMacro(i).getAmount().reset();
     }
 }
 
 function modWheelFunc(midi)
 {
     cDevice.getMacro(modWheelMacro).getAmount().set(midi.data2, 128);
-}
-
-function knobFunc(Row, index, midi)
-{
-    if (Row === 1)
-    {
-        var inc = (midi.data2 - 64) * volumeKnobSpeed;
-        tracks.getChannel(index).getVolume().inc(inc, 128);
-    }
-    else
-    {
-        if (bottomRow == BOTTOM_FUNC.CURRENT)
-        {
-            // 8 macros of selected track
-            var inc = (midi.data2 - 64) * macroKnobSpeed;
-            cDevice.getMacro(index).getAmount().inc(inc, 128);
-        }
-        else if (index < 7)
-        {
-            // 7 macros of master track
-            println("master knobs");
-            var inc = (midi.data2 - 64) * macroKnobSpeed;
-            mDevice.getMacro(index).getAmount().inc(inc, 128);
-        }
-        else if (index == 7)
-        {
-            // BPM control
-            var sign = getSign(midi.data2 - 64);
-            transport.getTempo().incRaw(0.5 * sign);
-            //transport.increaseTempo(inc, 256);
-        }
-    }
 }
 
 function setPadColor(pad, color)
@@ -282,8 +212,8 @@ function setIndications()
 {
     for (var i = 0; i < 8; i++)
     {
-        tracks.getTrack(i).getVolume().setIndication(true);
         cDevice.getMacro(i).getAmount().setIndication(true);
+        uControl.getControl(i).setIndication(true);
     }
 }
 
