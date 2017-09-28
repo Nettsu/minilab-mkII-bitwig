@@ -70,6 +70,12 @@ var BOTTOM_FUNC =
     MASTER:1
 };
 
+var PAD_FUNCTION =
+{
+	NOTES:0,
+	CONTROL:1
+};
+
 var KnobsLeft = [112, 74, 71, 76, 114, 18, 19, 16];
 var KnobsRight = [77, 93, 73, 75, 17, 91, 79, 72];
 
@@ -80,6 +86,7 @@ var modWheel        = 1;
 var modWheelMacro   = 7;
 var macroKnobSpeed  = 1.0;
 var rainbowColors   = true;
+var padFunction 	= PAD_FUNCTION.NOTES;
 
 function init()
 {
@@ -92,6 +99,7 @@ function init()
 
     host.getMidiInPort(0).setMidiCallback(onMidi);
 
+	transport = host.createTransport();
     cTrack = host.createCursorTrack(3, 0);
     uControl = host.createUserControls(8);
     cDevice = cTrack.getPrimaryDevice();
@@ -123,6 +131,19 @@ function init()
             makeRainbow();
         }
     });
+    
+    var padSetting = prefs.getEnumSetting("Pad function", "Pads", ["Notes", "Control"], "Notes");
+    padSetting.addValueObserver(function (value)
+    {
+        if (value == "Notes")
+        {
+			padFunction = PAD_FUNCTION.NOTES;
+		}
+		else
+		{
+			padFunction = PAD_FUNCTION.CONTROL;
+		}
+    });
 
     setIndications();
 }
@@ -142,25 +163,54 @@ function MidiData(status, data1, data2)
    this.data2 = data2;
 }
 
+function onPad(status, data1, data2)
+{
+	if (midi.status == STATUS_PAD_ON)
+	{
+		var padNum = midi.data1 - FIRST_PAD_MIDI;
+		
+		if (padFunction == PAD_FUNCTION.CONTROL)
+		{
+			if (padNum == 4)
+			{
+				transport.togglePlay();
+			}
+			else if (padNum == 5)
+			{
+				transport.stop();
+			}
+			else if (padNum == 6)
+			{
+				transport.record();
+			}
+		}
+		
+		if (rainbowColors == true)
+		{
+			setPadColor(padNum, COLOR.WHITE);
+		}
+	}
+	else if (midi.status == STATUS_PAD_OFF)
+	{
+		var padNum = midi.data1 - FIRST_PAD_MIDI;
+		
+		if (rainbowColors == true)
+		{
+			setPadColor(padNum, PAD_COLORS[padNum]);
+		}
+    }
+}
+
 function onMidi(status, data1, data2)
 {
     // Instantiate the MidiData Object for convenience:
     var midi = new MidiData(status, data1, data2);
 
     //println(midi.status + ":" + midi.data1 + ":" + midi.data2);
-
-    if (rainbowColors == true)
-    {
-        var padNum = midi.data1 - FIRST_PAD_MIDI;
-        if (midi.status == STATUS_PAD_ON)
-        {
-            setPadColor(padNum, COLOR.WHITE);
-        }
-        if (midi.status == STATUS_PAD_OFF)
-        {
-            setPadColor(padNum, PAD_COLORS[padNum]);
-        }
-    }
+	if (midi.status == STATUS_PAD_ON || midi.status == STATUS_PAD_OFF)
+	{
+		onPad(status, data1, data2);
+	}
 
     if (midi.status == STATUS_KNOB)
     {
