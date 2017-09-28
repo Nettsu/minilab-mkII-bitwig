@@ -88,8 +88,24 @@ var macroKnobSpeed  = 1.0;
 var rainbowColors   = true;
 var padFunction 	= PAD_FUNCTION.NOTES;
 
+var identityMap	 	= makeArray(128, -1);
+var emptyMap	 	= makeArray(128, -1);
+
+function makeArray(x, init)
+{
+	var table = new Array(x);
+	for (var i = 0; i < x; i++)
+	{
+		table[i] = init;
+	}
+	return table;
+}
+
 function init()
 {
+	for (var i = 0; i < 128; i++)
+		identityMap[i] = i;
+	
     // Create the Note Inputs and their Settings
     MiniLabKeys = host.getMidiInPort(0).createNoteInput("MiniLab Keys", "80????", "90????", "B001??", "B002??", "B007??", "B00B??", "B040??", "C0????", "D0????", "E0????");
     MiniLabKeys.setShouldConsumeEvents(false);
@@ -138,10 +154,12 @@ function init()
         if (value == "Notes")
         {
 			padFunction = PAD_FUNCTION.NOTES;
+			MiniLabPads.setKeyTranslationTable(identityMap);
 		}
 		else
 		{
 			padFunction = PAD_FUNCTION.CONTROL;
+			MiniLabPads.setKeyTranslationTable(emptyMap);
 		}
     });
 
@@ -163,7 +181,7 @@ function MidiData(status, data1, data2)
    this.data2 = data2;
 }
 
-function onPad(status, data1, data2)
+function onPad(midi)
 {
 	if (midi.status == STATUS_PAD_ON)
 	{
@@ -209,7 +227,7 @@ function onMidi(status, data1, data2)
     //println(midi.status + ":" + midi.data1 + ":" + midi.data2);
 	if (midi.status == STATUS_PAD_ON || midi.status == STATUS_PAD_OFF)
 	{
-		onPad(status, data1, data2);
+		onPad(midi);
 	}
 
     if (midi.status == STATUS_KNOB)
