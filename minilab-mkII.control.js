@@ -118,8 +118,10 @@ function init()
 	transport = host.createTransport();
     cTrack = host.createCursorTrack(3, 0);
     uControl = host.createUserControls(8);
-    cDevice = cTrack.getPrimaryDevice();
     prefs = host.getPreferences();
+    
+    deviceCursor = cTrack.createDeviceBank(1);
+    controlPageCursor = deviceCursor.getDevice(0).createCursorRemoteControlsPage(8);
 
     for (var i = 0; i < 8; i++)
     {
@@ -189,7 +191,23 @@ function onPad(midi)
 		
 		if (padFunction == PAD_FUNCTION.CONTROL)
 		{
-			if (padNum == 4)
+			if (padNum == 0)
+			{
+				deviceCursor.scrollDown();
+			}
+			else if (padNum == 1)
+			{
+				deviceCursor.scrollUp();
+			}
+			else if (padNum == 2)
+			{
+				controlPageCursors.selectPreviousPage();
+			}
+			else if (padNum == 3)
+			{
+				controlPageCursors.selectNextPage();
+			}
+			else if (padNum == 4)
 			{
 				transport.togglePlay();
 			}
@@ -236,14 +254,14 @@ function onMidi(status, data1, data2)
 
         for (var i = 0; i < 8; i++)
         {
-           if (midi.data1 === KnobsLeft[i])
-           {
-               cDevice.getMacro(i).getAmount().inc(inc, 128);
-           }
-           else if (midi.data1 === KnobsRight[i])
-           {
-              uControl.getControl(i).inc(inc, 128);
-           }
+            if (midi.data1 === KnobsLeft[i])
+            {
+				controlPageCursor.getParameter(i).inc(inc, 128);
+            }
+            else if (midi.data1 === KnobsRight[i])
+            {
+				uControl.getControl(i).inc(inc, 128);
+            }
         }
 
         if (midi.data1 == Knob1click)
@@ -261,13 +279,13 @@ function resetMacros()
 {
     for (var i = 0; i < 8; i++)
     {
-        cDevice.getMacro(i).getAmount().reset();
+        controlPageCursor.getParameter(i).reset();
     }
 }
 
 function modWheelFunc(midi)
 {
-    cDevice.getMacro(modWheelMacro).getAmount().set(midi.data2, 128);
+    controlPageCursor.getParameter(modWheelMacro).set(midi.data2, 128);
 }
 
 function setPadColor(pad, color)
@@ -280,7 +298,7 @@ function setIndications()
 {
     for (var i = 0; i < 8; i++)
     {
-        cDevice.getMacro(i).getAmount().setIndication(true);
+        controlPageCursor.getParameter(i).setIndication(true);
         uControl.getControl(i).setIndication(true);
     }
 }
