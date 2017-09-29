@@ -1,4 +1,4 @@
-loadAPI(1);
+loadAPI(2);
 
 host.defineController("Arturia", "MiniLab MKII", "1.0", "9c891939-9cb5-488d-a447-266f543516f3", "Netsu");
 host.defineMidiPorts(1, 1);
@@ -120,8 +120,8 @@ function init()
     uControl = host.createUserControls(8);
     prefs = host.getPreferences();
     
-    deviceCursor = cTrack.createDeviceBank(1);
-    controlPageCursor = deviceCursor.getDevice(0).createCursorRemoteControlsPage(8);
+    deviceCursor = cTrack.createCursorDevice();
+    controlPageCursor = deviceCursor.createCursorRemoteControlsPage(8);
 
     for (var i = 0; i < 8; i++)
     {
@@ -193,19 +193,19 @@ function onPad(midi)
 		{
 			if (padNum == 0)
 			{
-				deviceCursor.scrollDown();
+				deviceCursor.selectPrevious();
 			}
 			else if (padNum == 1)
 			{
-				deviceCursor.scrollUp();
+				deviceCursor.selectNext();
 			}
 			else if (padNum == 2)
 			{
-				controlPageCursors.selectPreviousPage();
+				controlPageCursor.selectPreviousPage(true);
 			}
 			else if (padNum == 3)
 			{
-				controlPageCursors.selectNextPage();
+				controlPageCursor.selectNextPage(true);
 			}
 			else if (padNum == 4)
 			{
